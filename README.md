@@ -13,7 +13,7 @@ This project is built on the Langchain RAG architecture, which enhances language
 - **Retriever:** A `MultiQueryRetriever` fetches the most relevant transcript chunks based on the user's question.
 - **Language Model:** Google Generative AI (Gemini) is used as the language model to generate answers.
 - **Prompting:** A custom prompt template guides the model to answer questions strictly based on the retrieved transcript context.
-- **Parallel Processing:** Langchain's `RunnableParallel` is used to process context retrieval and question input in parallel for efficiency.
+- **Chain:** Chaining all components together using both parallel and sequential processing to efficiently handle context retrieval, question answering, and response generation..
 
 This RAG-based approach allows the chatbot to provide accurate, context-aware answers grounded in the actual video transcript, improving reliability over standalone language models.
 
