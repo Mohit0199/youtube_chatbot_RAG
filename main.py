@@ -98,7 +98,7 @@ def create_rag_chain(transcript):
 
     vector_store = FAISS.from_documents(chunks, embeddings)
 
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro")
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
 
     retriever = MultiQueryRetriever.from_llm(
         retriever=vector_store.as_retriever(
