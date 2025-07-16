@@ -1,13 +1,13 @@
 import re
-from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
+from langchain_community.document_loaders import YoutubeLoader
 import yt_dlp
 from dotenv import load_dotenv
 import os
@@ -36,36 +36,35 @@ def extract_video_id(url):
     return None
 
 
-# Function to fetch and process transcript
-def fetch_transcript(video_id):
-    languages = [
-        "ab", "aa", "af", "ak", "sq", "am", "ar", "hy", "as", "ay", "az", "bn", "ba", "eu", "be", "bho", "bs",
-        "br", "bg", "my", "ca", "ceb", "zh-Hans", "zh-Hant", "co", "hr", "cs", "da", "dv", "nl", "dz", "en", "eo",
-        "et", "ee", "fo", "fj", "fil", "fi", "fr", "gaa", "gl", "lg", "ka", "de", "el", "gn", "gu", "ht", "ha", "haw",
-        "iw", "hi", "hmn", "hu", "is", "ig", "id", "iu", "ga", "it", "ja", "jv", "kl", "kn", "kk", "kha", "km", "rw",
-        "ko", "kri", "ku", "ky", "lo", "la", "lv", "ln", "lt", "lua", "luo", "lb", "mk", "mg", "ms", "ml", "mt", "gv",
-        "mi", "mr", "mn", "mfe", "ne", "new", "nso", "no", "ny", "oc", "or", "om", "os", "pam", "ps", "fa", "pl", "pt",
-        "pt-PT", "pa", "qu", "ro", "rn", "ru", "sm", "sg", "sa", "gd", "sr", "crs", "sn", "sd", "si", "sk", "sl", "so",
-        "st", "es", "su", "sw", "ss", "sv", "tg", "ta", "tt", "te", "th", "bo", "ti", "to", "ts", "tn", "tum", "tr",
-        "tk", "uk", "ur", "ug", "uz", "ve", "vi", "war", "cy", "fy", "wo", "xh", "yi", "yo", "zu"
-    ]
-
+def fetch_transcript(video_url):
     try:
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=languages)
+        languages = [
+            "ab", "aa", "af", "ak", "sq", "am", "ar", "hy", "as", "ay", "az", "bn", "ba", "eu", "be", "bho", "bs",
+            "br", "bg", "my", "ca", "ceb", "zh-Hans", "zh-Hant", "co", "hr", "cs", "da", "dv", "nl", "dz", "en", "eo",
+            "et", "ee", "fo", "fj", "fil", "fi", "fr", "gaa", "gl", "lg", "ka", "de", "el", "gn", "gu", "ht", "ha", "haw",
+            "iw", "hi", "hmn", "hu", "is", "ig", "id", "iu", "ga", "it", "ja", "jv", "kl", "kn", "kk", "kha", "km", "rw",
+            "ko", "kri", "ku", "ky", "lo", "la", "lv", "ln", "lt", "lua", "luo", "lb", "mk", "mg", "ms", "ml", "mt", "gv",
+            "mi", "mr", "mn", "mfe", "ne", "new", "nso", "no", "ny", "oc", "or", "om", "os", "pam", "ps", "fa", "pl", "pt",
+            "pt-PT", "pa", "qu", "ro", "rn", "ru", "sm", "sg", "sa", "gd", "sr", "crs", "sn", "sd", "si", "sk", "sl", "so",
+            "st", "es", "su", "sw", "ss", "sv", "tg", "ta", "tt", "te", "th", "bo", "ti", "to", "ts", "tn", "tum", "tr",
+            "tk", "uk", "ur", "ug", "uz", "ve", "vi", "war", "cy", "fy", "wo", "xh", "yi", "yo", "zu"
+        ]
+        loader = YoutubeLoader.from_youtube_url(video_url, language=languages)
+        docs = loader.load()
 
-        transcript = " ".join(chunk['text'] for chunk in transcript_list)
+        if not docs:
+            return None, "No transcript found."
+
+        # Combine all documents into one transcript
+        transcript = " ".join(doc.page_content for doc in docs)
 
         return transcript, "Transcript fetched successfully"
 
-    except TranscriptsDisabled:
-        return None, "No captions available for this video."
-    except NoTranscriptFound:
-        return None, "No transcript found for this video."
     except Exception as e:
         return None, f"Error occurred: {str(e)}"
 
 
-    
+
 # Function to fetch YouTube video metadata
 def fetch_youtube_info(video_url):
     ydl_opts = {
@@ -91,8 +90,8 @@ def create_rag_chain(transcript):
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     chunks = splitter.create_documents([transcript])
 
-    embeddings = HuggingFaceInferenceAPIEmbeddings(
-        api_key=hf_api_key,
+    embeddings = HuggingFaceEmbeddings(
+        #api_key=hf_api_key,
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 

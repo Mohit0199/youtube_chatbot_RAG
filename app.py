@@ -90,7 +90,7 @@ if st.session_state.stage == 'input_url':
         if info:
             video_id = extract_video_id(youtube_url)
             if video_id:
-                transcript_text, language_or_error = fetch_transcript(video_id)
+                transcript_text, language_or_error = fetch_transcript(youtube_url)
                 if transcript_text:
                     st.session_state.transcript = transcript_text
                     st.session_state.language = language_or_error
